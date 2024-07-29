@@ -11,6 +11,13 @@ from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 import copy
 import time
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.getcwd(), '..', 'Convolutional-KANs-master-master')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.getcwd(), '..', 'Convolutional-KANs-master-master', 'kan_convolutional')))
+
+from kan_convolutional.KANConv import KAN_Convolutional_Layer
+from kan_convolutional.KANLinear import KANLinear
 
 # Ensure the root path is a string
 root = './data'
@@ -64,44 +71,20 @@ class MNISTDatasetLoaderTest(Dataset):
             sample['x'] = self.transform(sample['x'])
         return sample
 
-class ThreeLayerLinear(nn.Module):
-    def __init__(self):
-        super(ThreeLayerLinear, self).__init__()
-        self.layer1 = nn.Linear(784, 500)
-        self.layer2 = nn.Linear(500, 300)
-        self.layer3 = nn.Linear(300, 200)
-        self.layer4 = nn.Linear(200, 100)
-        self.layer5 = nn.Linear(100, 10)
+class KANNetwork(nn.Module):
+    def __init__(self, device: str = 'cuda'):
+        super().__init__()
 
-    def forward(self, x):
-        x = torch.relu(self.layer1(x))
-        x = torch.relu(self.layer2(x))
-        x = torch.relu(self.layer3(x))
-        x = torch.relu(self.layer4(x))
-        x = self.layer5(x)
-        #x = self.layer3(x)
-        return x
 
-def train_model(model, train_loader, epochs=50, learning_rate=0.01):
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-
-    for epoch in range(epochs):
-        running_loss = 0.0
-        for i, data in enumerate(train_loader, 0):
-            inputs, labels = data
-            inputs = inputs.view(-1, 28*28)
-
-            optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-
-            running_loss += loss.item()
-            if i % 100 == 99:    # print every 100 mini-batches
-                print(f'Epoch [{epoch + 1}/{epochs}], Step [{i + 1}], Loss: {running_loss / 100:.4f}')
-                running_loss = 0.0
-
-network = ThreeLayerLinear()
-train_model(network, trainloader)
+        self.kan1 = KANLinear(
+            625,
+            10,
+            grid_size=10,
+            spline_order=3,
+            scale_noise=0.01,
+            scale_base=1,
+            scale_spline=1,
+            base_activation=nn.SiLU,
+            grid_eps=0.02,
+            grid_range=[0, 1],
+        )
